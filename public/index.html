@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16a34a">
+<link rel="manifest" href="/manifest.json">
+<title>Student Project Hub</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+
+<style>
+.logout-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(2, 6, 23, .55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  z-index: 100000;
+  animation: logoutFadeIn .25s ease;
+}
+.logout-backdrop.show { display: flex; }
+@keyframes logoutFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.logout-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 24px;
+  padding: 34px 28px 26px;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, .35);
+  overflow: hidden;
+  animation: logoutPop .4s cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes logoutPop {
+  from { opacity: 0; transform: translateY(24px) scale(.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.logout-glow {
+  position: absolute;
+  top: -80px; left: 50%;
+  transform: translateX(-50%);
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(239, 68, 68, .35), transparent 65%);
+  pointer-events: none;
+  animation: logoutGlowPulse 3s ease-in-out infinite;
+}
+@keyframes logoutGlowPulse {
+  0%, 100% { opacity: .7; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 1;  transform: translateX(-50%) scale(1.15); }
+}
+.logout-icon-wrap { position: relative; width: 78px; height: 78px; margin: 0 auto 18px; }
+.logout-icon-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px dashed rgba(239, 68, 68, .45); animation: logoutRingSpin 9s linear infinite; }
+@keyframes logoutRingSpin { to { transform: rotate(360deg); } }
+.logout-icon {
+  position: absolute; inset: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 10px 24px rgba(239, 68, 68, .45);
+  animation: logoutIconWiggle 2.6s ease-in-out infinite;
+}
+@keyframes logoutIconWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-8deg); }
+  30% { transform: rotate(8deg); }
+  45% { transform: rotate(-5deg); }
+  60% { transform: rotate(5deg); }
+  75% { transform: rotate(0deg); }
+}
+.logout-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.logout-sub { color: var(--muted, #64748b); font-size: .9rem; line-height: 1.55; margin-bottom: 22px; }
+.logout-sub b { color: var(--text, #0f172a); font-weight: 800; }
+.logout-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.logout-btn-cancel, .logout-btn-confirm {
+  flex: 1; min-width: 140px;
+  padding: 12px 18px; border-radius: 14px;
+  font-weight: 800; font-size: .92rem; cursor: pointer;
+  border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.logout-btn-cancel { background: var(--border, #e2e8f0); color: var(--text, #0f172a); }
+.logout-btn-cancel:hover { background: rgba(22, 163, 74, .12); color: #16a34a; transform: translateY(-2px); }
+.logout-btn-confirm { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; box-shadow: 0 10px 22px rgba(239, 68, 68, .35); }
+.logout-btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(239, 68, 68, .5); }
+.logout-btn-confirm:active, .logout-btn-cancel:active { transform: translateY(0); }
+.logout-btn-confirm.loading { pointer-events: none; opacity: .85; }
+.logout-btn-confirm.loading i { animation: logoutBtnSpin .8s linear infinite; }
+@keyframes logoutBtnSpin { to { transform: rotate(360deg); } }
+@media (max-width: 420px) {
+  .logout-modal { padding: 28px 22px 22px; border-radius: 20px; }
+  .logout-title { font-size: 1.2rem; }
+  .logout-btn-cancel, .logout-btn-confirm { min-width: 120px; }
+}
+</style>
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div id="logoutBackdrop" class="logout-backdrop">
+  <div class="logout-modal" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
+    <div class="logout-glow"></div>
+    <div class="logout-icon-wrap">
+      <div class="logout-icon-ring"></div>
+      <div class="logout-icon">
+        <i class="fas fa-power-off"></i>
+      </div>
+    </div>
+    <h2 id="logoutTitle" class="logout-title">Leaving so soon?</h2>
+    <p class="logout-sub">You're about to sign out of <b>Student Project Hub</b>.<br>Your work is saved — see you again soon! 👋</p>
+    <div class="logout-actions">
+      <button class="logout-btn-cancel" onclick="closeLogoutModal()">
+        <i class="fas fa-arrow-left"></i> Stay
+      </button>
+      <button class="logout-btn-confirm" onclick="confirmLogout()">
+        <i class="fas fa-right-from-bracket"></i> Log Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="maintenanceOverlay" class="maintenance-overlay hidden">
+  <div class="maintenance-bg">
+    <div class="maintenance-orb orb1"></div>
+    <div class="maintenance-orb orb2"></div>
+    <div class="maintenance-orb orb3"></div>
+  </div>
+  <div class="maintenance-card">
+    <div class="maintenance-icon">
+      <i class="fas fa-tools"></i>
+      <div class="maintenance-spin"><i class="fas fa-gear"></i></div>
+    </div>
+    <h1>We'll Be Right Back</h1>
+    <p class="maintenance-sub">Sorry, we're currently under maintenance.</p>
+    <div class="maintenance-bar"><div class="maintenance-bar-fill"></div></div>
+    <p class="maintenance-note">Our team is working hard to make things better.<br>Please check back soon. 🛠️</p>
+    <div class="maintenance-actions">
+      <button class="btn-inline" onclick="backToLoginFromMaintenance()">
+        <i class="fas fa-arrow-left"></i> Back to Login
+      </button>
+    </div>
+    <div class="maintenance-footer">
+      <span>© <span id="maintenanceYear"></span> Student Project Hub</span>
+    </div>
+  </div>
+</div>
+
+<section id="authSection" class="auth">
+  <div class="auth-aurora"></div>
+
+  <div style="position:absolute; top:20px; right:20px; z-index:100; display:flex; gap:10px;">
+    <button class="pillbtn" onclick="showAdminLogin()"><i class="fas fa-shield-halved"></i> Admin</button>
+    <button class="pillbtn" onclick="openAbout()"><i class="fas fa-circle-info"></i> About</button>
+    <button class="pillbtn" onclick="toggleTheme()"><i class="fas fa-circle-half-stroke"></i> Theme</button>
+  </div>
+
+  <div class="auth-card" id="userAuthCard">
+    <div class="brand"><i class="fas fa-graduation-cap"></i><h1>Student Project Hub</h1></div>
+    <div class="hint">Teachers create. Students deliver. Together.</div>
+    <div class="tab-switch">
+      <button id="tabLogin" class="active" onclick="toggleMode('login')">Login</button>
+      <button id="tabSignup" onclick="toggleMode('signup')">Sign Up</button>
+    </div>
+    <form id="authForm">
+      <div class="field hidden" id="fieldName"><div class="label">Full Name</div><input type="text" id="regName" class="input" placeholder="Juan Dela Cruz"></div>
+      <div class="field hidden" id="fieldRole">
+        <div class="label">I am a</div>
+        <select id="regRole" class="input" onchange="onRoleChange()">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+      </div>
+      <div class="field hidden" id="fieldStudentId">
+        <div class="label">Student ID *</div>
+        <input type="text" id="regStudentId" class="input" placeholder="e.g. 2024-00123">
+        <p class="muted" style="font-size:.75rem; margin-top:4px;"><i class="fas fa-info-circle"></i> You must be enrolled by the admin first.</p>
+      </div>
+      <div class="field hidden" id="fieldSubjects"><div class="label">Subjects You Teach</div><div id="subjectCheckboxes" class="subject-checks"></div></div>
+      <div class="field hidden" id="fieldCourse"><div class="label">Course</div><input type="text" id="regCourse" class="input" placeholder="BS Information Technology"></div>
+      <div class="field hidden" id="fieldYear"><div class="label">Year Level</div>
+        <select id="regYear" class="input"><option value="">Select...</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select>
+      </div>
+      <div class="field hidden" id="fieldPhone">
+        <div class="label">Phone Number</div>
+        <input type="tel" id="regPhone" class="input" placeholder="+639171234567" autocomplete="tel">
+      </div>
+      <div class="field"><div class="label">Email</div><input type="email" id="email" class="input" placeholder="you@example.com" required></div>
+      <div class="field">
+        <div class="label">Password</div>
+        <div class="pw-wrap">
+          <input type="password" id="pass" class="input" placeholder="min 6 characters" required>
+          <button type="button" class="pw-toggle" onclick="togglePassword('pass', this)"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+
+      <div class="captcha-box" id="captchaBox" onclick="startCaptchaVerify()">
+        <label class="captcha-label">
+          <span class="captcha-check" id="captchaCheck">
+            <i class="fas fa-spinner fa-spin captcha-spinner" id="captchaSpinner" style="display:none;"></i>
+            <i class="fas fa-check captcha-tick" id="captchaTick" style="display:none;"></i>
+          </span>
+          <span id="captchaText">I'm not a robot</span>
+        </label>
+        <div class="captcha-brand"><i class="fas fa-shield-halved"></i><span>reCAPTCHA</span></div>
+      </div>
+
+      <button type="submit" class="btn" id="submitBtn" disabled>Login</button>
+      <div class="hint" style="margin-top:12px;">
+        <span class="link" onclick="showForgotPassword()">Forgot password?</span>
+      </div>
+      <div class="hint" style="margin-top:8px; font-size:.78rem;" id="attemptHint"></div>
+    </form>
+  </div>
+
+  <div class="auth-card hidden" id="adminAuthCard">
+    <div class="brand"><i class="fas fa-shield-halved" style="color:#dc2626;"></i><h1>Admin Portal</h1></div>
+    <div class="hint">Restricted access — administrators only.</div>
+    <form id="adminAuthForm">
+      <div class="field"><div class="label">Admin Email</div><input type="email" id="adminEmail" class="input" placeholder="admin@example.com" required></div>
+      <div class="field">
+        <div class="label">Password</div>
+        <div class="pw-wrap">
+          <input type="password" id="adminPass" class="input" placeholder="Password" required>
+          <button type="button" class="pw-toggle" onclick="togglePassword('adminPass', this)"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+
+      <div class="captcha-box" id="adminCaptchaBox" onclick="startAdminCaptchaVerify()">
+        <label class="captcha-label">
+          <span class="captcha-check" id="adminCaptchaCheck">
+            <i class="fas fa-spinner fa-spin captcha-spinner" id="adminCaptchaSpinner" style="display:none;"></i>
+            <i class="fas fa-check captcha-tick" id="adminCaptchaTick" style="display:none;"></i>
+          </span>
+          <span id="adminCaptchaText">I'm not a robot</span>
+        </label>
+        <div class="captcha-brand"><i class="fas fa-shield-halved"></i><span>reCAPTCHA</span></div>
+      </div>
+
+      <button type="submit" class="btn" id="adminSubmitBtn" disabled style="background:linear-gradient(135deg, #dc2626, #ef4444); box-shadow:0 14px 24px rgba(239,68,68,.25);">Login as Admin</button>
+      <div class="hint" style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border);">
+        <span class="muted" style="font-size:.82rem;">Not an admin?</span>
+        <span class="link" onclick="showUserLogin()" style="margin-left:6px; font-size:.82rem;"><i class="fas fa-arrow-left"></i> Back to Login</span>
+      </div>
+      <div class="hint" style="margin-top:8px; font-size:.78rem;" id="adminAttemptHint"></div>
+    </form>
+  </div>
+</section>
+
+<section id="app" style="display:none;">
+  <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-logo"><i class="fas fa-graduation-cap"></i> <span>Project Hub</span></div>
+
+      <div id="roleBadgeWrap" style="padding:0 10px 12px;">
+        <div id="roleBadge" style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px;">
+          <i class="fas fa-user"></i> <span id="roleBadgeText">Student</span>
+        </div>
+      </div>
+
+      <div class="nav" id="navLinks">
+        <a onclick="showView('dashboard')" id="nav-dashboard" class="active"><i class="fas fa-gauge"></i> <span>Dashboard</span></a>
+        <a onclick="showView('teacher-courses')" id="nav-teacher-courses" class="hidden"><i class="fas fa-chalkboard-user"></i> <span>My Project</span></a>
+        <a onclick="showView('courses')" id="nav-courses"><i class="fas fa-book"></i> <span id="navCoursesLabel">My Project</span></a>
+        <a onclick="showView('browse')" id="nav-browse"><i class="fas fa-compass"></i> <span>Browse Open</span></a>
+        <a onclick="showView('friends')" id="nav-friends"><i class="fas fa-user-group"></i> <span>Friends</span><span id="friendBadge" class="nav-badge hidden">0</span></a>
+        <a onclick="showView('chat')" id="nav-chat"><i class="fas fa-comments"></i> <span>Chat</span><span id="chatBadge" class="nav-badge hidden">0</span></a>
+        <a onclick="showView('people')" id="nav-people"><i class="fas fa-users"></i> <span>People</span></a>
+        <a onclick="showView('profile')" id="nav-profile"><i class="fas fa-user"></i> <span>Profile</span></a>
+        <a onclick="showView('classes')" id="nav-classes"><i class="fas fa-chalkboard"></i> <span>Classes</span></a>
+        <a onclick="showView('admin')" id="nav-admin" class="hidden"><i class="fas fa-shield-halved"></i> <span>Admin Panel</span></a>
+      </div>
+      <div class="spacer"></div>
+      <a class="nav logout" onclick="logout()"><i class="fas fa-power-off"></i> <span>Logout</span></a>
+    </nav>
+
+    <main class="main" id="mainScroll">
+      <div class="topbar">
+        <button class="hamburger" onclick="toggleDrawer()"><i class="fas fa-bars"></i> Menu</button>
+        <div style="flex:1;"></div>
+        <button class="btn-ghost" onclick="toggleNotifications(event)" title="Notifications" style="position:relative;">
+          <i class="fas fa-bell"></i>
+          <span id="notifBadge" class="nav-badge hidden" style="position:absolute; top:-4px; right:-4px;">0</span>
+        </button>
+        <button class="btn-ghost" onclick="openAbout()"><i class="fas fa-circle-info"></i> About</button>
+        <button class="btn-ghost" onclick="toggleTheme()"><i class="fas fa-circle-half-stroke"></i></button>
+        <div id="viewAsWrap" class="hidden" style="position:relative;">
+          <button class="btn-ghost" onclick="toggleViewAsMenu(event)" title="View as..." style="display:flex; align-items:center; gap:6px;">
+            <i class="fas fa-eye"></i> <span id="viewAsLabel">View As: Admin</span> <i class="fas fa-chevron-down" style="font-size:.7rem;"></i>
+          </button>
+          <div id="viewAsMenu" class="view-as-menu hidden">
+            <button onclick="setViewAs('admin')"><i class="fas fa-shield-halved"></i> Admin (default)</button>
+            <button onclick="setViewAs('teacher')"><i class="fas fa-chalkboard-user"></i> Teacher</button>
+            <button onclick="setViewAs('student')"><i class="fas fa-user-graduate"></i> Student</button>
+          </div>
+        </div>
+        <div class="pill">
+          <img id="topAvatar" src="https://ui-avatars.com/api/?background=16a34a&color=fff&name=S" alt="">
+          <div><div class="name" id="userGreet">Student</div><div class="sub" id="userEmailSmall">email</div></div>
+        </div>
+      </div>
+
+      <div id="notifPanel" class="notif-panel">
+        <div class="notif-head">
+          <strong>Notifications</strong>
+          <button class="btn-ghost" style="padding:4px 10px; font-size:.75rem;" onclick="markAllNotifRead()">Mark all read</button>
+        </div>
+        <div id="notifList" class="notif-list"></div>
+      </div>
+
+      <section id="view-dashboard" class="view">
+        <div id="studentDashboard" class="hidden">
+          <div class="student-hero">
+            <div class="student-hero-text">
+              <h1>Hi, <span id="studentHeroName">Student</span> 👋</h1>
+              <p>Here's what's on your plate today.</p>
+            </div>
+            <div class="student-hero-emoji">📚</div>
+          </div>
+          <div class="kpi-grid" id="kpiGridStudent"></div>
+          <div class="card hidden" id="openCoursesCardStudent">
+            <h3><i class="fas fa-compass"></i> Projects you can join</h3>
+            <div id="openCoursesListStudent" class="course-grid"></div>
+          </div>
+          <div class="card">
+            <h3><i class="fas fa-book"></i> My Projects</h3>
+            <div id="dashCoursesStudent" class="course-grid"></div>
+          </div>
+        </div>
+
+        <div id="teacherDashboard" class="hidden">
+          <div class="teacher-hero">
+            <div class="teacher-hero-text">
+              <h1><i class="fas fa-chalkboard-user"></i> Teacher Console</h1>
+              <p>Create, assign, and grade projects — all in one place.</p>
+            </div>
+            <button class="btn-inline" onclick="openCourseModal()" style="align-self:center;">
+              <i class="fas fa-plus"></i> New Project
+            </button>
+          </div>
+          <div class="kpi-grid" id="kpiGridTeacher"></div>
+          <div class="card">
+            <h3><i class="fas fa-book"></i> My Latest Projects</h3>
+            <div id="dashCoursesTeacher" class="course-grid"></div>
+          </div>
+        </div>
+
+        <div id="adminDashboard" class="hidden">
+          <div class="admin-hero">
+            <div class="admin-hero-text">
+              <h1><i class="fas fa-shield-halved"></i> Admin Monitor</h1>
+              <p>Read-only overview of the entire platform.</p>
+            </div>
+          </div>
+          <div class="kpi-grid" id="kpiGridAdmin"></div>
+          <div class="card">
+            <h3><i class="fas fa-book"></i> Recent Projects Across Platform</h3>
+            <div id="dashCoursesAdmin" class="course-grid"></div>
+          </div>
+        </div>
+
+        <div class="card hidden" id="annFeedCard">
+          <h3><i class="fas fa-bullhorn" style="color:var(--primary);"></i> Latest Announcements</h3>
+          <div id="annFeedList" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="card hidden" id="studentRegsCard">
+          <h3>
+            <i class="fas fa-user-plus"></i> Student Registrations
+            <span class="chip" id="studentRegsCount">0</span>
+            <input id="studentRegsSearch" class="input" style="float:right; max-width:220px; padding:6px 12px; font-size:.85rem;" placeholder="Search name or ID..." oninput="filterStudentRegs()">
+          </h3>
+          <div class="table-wrap" style="overflow-x:auto; margin-top:12px;">
+            <table style="width:100%; border-collapse:collapse; font-size:.88rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border); text-align:left;">
+                  <th style="padding:10px 8px;">Student ID</th>
+                  <th style="padding:10px 8px;">Name</th>
+                  <th style="padding:10px 8px;">Course</th>
+                  <th style="padding:10px 8px;">Enrolled</th>
+                  <th style="padding:10px 8px;">Duration</th>
+                  <th style="padding:10px 8px;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="studentRegsBody"></tbody>
+            </table>
+          </div>
+          <div id="studentRegsEmpty" class="empty hidden" style="padding:20px;"><i class="fas fa-user-slash"></i><p>No student registrations yet.</p></div>
+        </div>
+      </section>
+
+      <section id="view-teacher-courses" class="hidden view">
+        <h1 class="page-title">
+          <i class="fas fa-chalkboard-user"></i> My Projects
+          <button class="btn-inline" style="float:right;" onclick="openCourseModal()"><i class="fas fa-plus"></i> New Project</button>
+        </h1>
+        <div class="card">
+          <div class="row">
+            <div class="field"><div class="label">Search</div><input id="tcSearch" class="input" placeholder="Search your projects..." oninput="loadTeacherCourses()"></div>
+            <div class="field"><div class="label">Subject</div><select id="tcSubjectFilter" class="input" onchange="loadTeacherCourses()"></select></div>
+          </div>
+        </div>
+        <div id="teacherCoursesGrid" class="course-grid"></div>
+      </section>
+
+      <section id="view-courses" class="hidden view">
+        <h1 class="page-title">
+          <i class="fas fa-book"></i> <span id="coursesTitle">My Project</span>
+          <button class="btn-inline hidden" id="newCourseBtn" style="float:right;" onclick="openCourseModal()"><i class="fas fa-plus"></i> New Project</button>
+        </h1>
+        <div class="card">
+          <div class="row">
+            <div class="field"><div class="label">Search</div><input id="courseSearch" class="input" placeholder="Search projects..." oninput="loadCourses()"></div>
+            <div class="field"><div class="label">Subject</div><select id="courseSubjectFilter" class="input" onchange="loadCourses()"></select></div>
+          </div>
+        </div>
+        <div id="coursesGrid" class="course-grid"></div>
+      </section>
+
+      <section id="view-browse" class="hidden view">
+        <h1 class="page-title"><i class="fas fa-compass"></i> Browse Open Projects</h1>
+        <div class="card">
+          <p class="muted" style="font-size:.9rem; margin-bottom:10px;">These are projects created by teachers that accept new student members.</p>
+          <div class="row">
+            <div class="field"><div class="label">Search</div><input id="browseSearch" class="input" placeholder="Search open projects..." oninput="loadBrowse()"></div>
+            <div class="field"><div class="label">Subject</div><select id="browseSubject" class="input" onchange="loadBrowse()"></select></div>
+          </div>
+        </div>
+        <div id="browseGrid" class="course-grid"></div>
+      </section>
+
+      <section id="view-course" class="hidden view">
+        <div class="no-print" style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <button class="btn-ghost" onclick="backFromCourse()"><i class="fas fa-arrow-left"></i> Back</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-ghost" onclick="openInviteModal()" id="inviteBtn" style="display:none;"><i class="fas fa-user-plus"></i> Invite</button>
+            <button class="btn-ghost" onclick="openEditCourseModal()" id="editCourseBtn" style="display:none;"><i class="fas fa-pen"></i> Edit</button>
+            <button class="btn-inline" onclick="printCourse()"><i class="fas fa-file-pdf"></i> Print / PDF</button>
+          </div>
+        </div>
+        <div id="courseDetail" style="margin-top:12px;"></div>
+      </section>
+
+      <section id="view-friends" class="hidden view">
+        <h1 class="page-title"><i class="fas fa-user-group"></i> Friends</h1>
+        <div class="card">
+          <h3><i class="fas fa-user-plus"></i> Add Friend</h3>
+          <div class="row">
+            <div class="field"><input id="friendEmail" class="input" placeholder="friend@example.com"></div>
+            <div class="field" style="max-width:160px;"><button class="btn-inline" style="width:100%;" onclick="sendFriendRequest()"><i class="fas fa-paper-plane"></i> Send</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-bell"></i> Friend Requests</h3>
+          <div id="friendRequestsList"></div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-users"></i> My Friends <span id="friendCount" class="muted"></span></h3>
+          <div id="friendsList" class="people-grid"></div>
+        </div>
+      </section>
+
+      <section id="view-chat" class="hidden view">
+        <h1 class="page-title"><i class="fas fa-comments"></i> Chat</h1>
+        <div class="chat-layout">
+          <aside class="chat-sidebar">
+            <input id="contactSearch" class="input" placeholder="Search contacts..." oninput="filterContacts()" style="margin-bottom:8px;">
+            <div id="contactsList"></div>
+          </aside>
+          <div class="chat-main" id="chatMain">
+            <div class="empty" style="margin:auto;"><i class="fas fa-comments"></i><p>Select a contact to start chatting</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-people" class="hidden view">
+        <h1 class="page-title"><i class="fas fa-users"></i> People</h1>
+        <div class="card"><div class="field"><div class="label">Search by name</div><input id="peopleSearch" class="input" placeholder="Type a name or course..." oninput="searchPeople()"></div></div>
+        <div id="peopleGrid" class="people-grid"></div>
+      </section>
+
+      <section id="view-profile" class="hidden view">
+        <h1 class="page-title"><i class="fas fa-user"></i> My Profile</h1>
+        <div class="profile-banner-wrap">
+          <div class="profile-banner" id="profileBanner">
+            <div class="banner-overlay"><button class="btn-ghost banner-btn" onclick="document.getElementById('bannerInp').click()"><i class="fas fa-image"></i> Change Banner</button></div>
+          </div>
+          <div class="profile-banner-avatar"><img id="userAvatar" src=""></div>
+          <input type="file" id="bannerInp" class="hidden" accept="image/*" onchange="uploadBanner(event)">
+        </div>
+        <div class="card" style="text-align:center; margin-top:60px;">
+          <input type="file" id="fileInp" class="hidden" accept="image/*" onchange="uploadAvatar(event)">
+          <button class="btn-inline" onclick="document.getElementById('fileInp').click()"><i class="fas fa-image"></i> Change Profile Photo</button>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-user-pen"></i> Profile Info</h3>
+          <div class="field"><div class="label">Full Name</div><input id="profName" class="input"></div>
+          <div class="field"><div class="label">Bio</div><textarea id="profBio" class="input" rows="3"></textarea></div>
+          <h4 style="margin-top:16px; color:var(--primary);"><i class="fas fa-graduation-cap"></i> Academic</h4>
+          <div class="row">
+            <div class="field"><div class="label">School</div><input id="profSchool" class="input"></div>
+            <div class="field"><div class="label">Student ID</div><input id="profStudentId" class="input"></div>
+          </div>
+          <div class="row">
+            <div class="field"><div class="label">Course</div><input id="profCourse" class="input"></div>
+            <div class="field"><div class="label">Year Level</div>
+              <select id="profYear" class="input"><option value="">Select...</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option><option>5th Year</option></select>
+            </div>
+          </div>
+          <div class="field"><div class="label">Section</div><input id="profSection" class="input"></div>
+          <h4 style="margin-top:16px; color:var(--primary);"><i class="fas fa-user"></i> Personal</h4>
+          <div class="row">
+            <div class="field"><div class="label">Birthday</div><input id="profBirthday" type="date" class="input"></div>
+            <div class="field"><div class="label">Gender</div>
+              <select id="profGender" class="input"><option value="">Prefer not to say</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Other</option></select>
+            </div>
+          </div>
+          <div class="field"><div class="label">Address</div><input id="profAddress" class="input"></div>
+          <div class="field"><div class="label">Contact Number</div><input id="profContact" class="input"></div>
+          <div class="field">
+            <div class="label"><i class="fas fa-mobile-alt"></i> Phone Number (for password recovery)</div>
+            <input id="profPhone" class="input" type="tel" placeholder="+639171234567" autocomplete="tel">
+          </div>
+          <h4 style="margin-top:16px; color:var(--primary);"><i class="fas fa-phone"></i> Guardian / Emergency</h4>
+          <div class="row">
+            <div class="field"><div class="label">Guardian Name</div><input id="profGuardianName" class="input"></div>
+            <div class="field"><div class="label">Guardian Contact</div><input id="profGuardianContact" class="input"></div>
+          </div>
+          <h4 style="margin-top:16px; color:var(--primary);"><i class="fas fa-heart"></i> Interests</h4>
+          <div class="row">
+            <div class="field"><div class="label">Hobbies (comma separated)</div><input id="profHobbies" class="input"></div>
+            <div class="field"><div class="label">Skills (comma separated)</div><input id="profSkills" class="input"></div>
+          </div>
+          <div class="field hidden" id="teacherSubjectsField"><div class="label">Subjects You Teach</div><div id="profSubjects" class="subject-checks"></div></div>
+          <div class="button-row-center"><button class="btn-inline" onclick="saveProfile()"><i class="fas fa-save"></i> Save Profile</button></div>
+        </div>
+        <div class="card">
+          <h3><i class="fab fa-telegram" style="color:#229ED9;"></i> Telegram Recovery</h3>
+          <div id="tgStatusBox" style="margin:10px 0;"></div>
+          <div id="tgHint" class="muted" style="font-size:.85rem; line-height:1.6; margin:10px 0;"></div>
+          <div class="field"><div class="label">Your Telegram Chat ID</div><input id="profTelegram" class="input" placeholder="e.g. 7834251234" inputmode="numeric" autocomplete="off"></div>
+          <div class="button-row-center">
+            <button class="btn-inline" onclick="saveProfile()"><i class="fas fa-save"></i> Save</button>
+            <button class="btn-ghost" onclick="testTelegramLink()"><i class="fas fa-paper-plane"></i> Send Test Message</button>
+            <button class="btn-ghost" id="unlinkTgBtn" onclick="unlinkTelegram()" style="display:none; color:var(--danger);"><i class="fas fa-unlink"></i> Unlink</button>
+          </div>
+          <div id="telegramStatus" style="margin-top:10px;"></div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-key"></i> Change Password</h3>
+          <div class="field"><div class="label">Current Password</div><input type="password" id="curPass" class="input"></div>
+          <div class="field">
+            <div class="label">New Password</div>
+            <div class="pw-wrap">
+              <input type="password" id="newPass" class="input">
+              <button type="button" class="pw-toggle" onclick="togglePassword('newPass', this)"><i class="fas fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="button-row-center"><button class="btn-inline" onclick="changePassword()"><i class="fas fa-save"></i> Save</button></div>
+        </div>
+      </section>
+
+      <section id="view-user-profile" class="hidden view">
+        <div class="no-print" style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <button class="btn-ghost" onclick="backFromUserProfile()"><i class="fas fa-arrow-left"></i> Back</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-inline" id="userChatBtn" onclick="chatWithViewedUser()"><i class="fas fa-comments"></i> Chat</button>
+            <button class="btn-inline hidden" id="userAddFriendBtn" onclick="addFriendViewedUser()"><i class="fas fa-user-plus"></i> Add Friend</button>
+            <button class="btn-ghost" id="userUnfriendBtn" onclick="unfriendViewedUser()" style="color:var(--danger); display:none;"><i class="fas fa-user-minus"></i> Unfriend</button>
+          </div>
+        </div>
+        <div id="userProfileContent"><p style="text-align:center; padding:40px;" class="muted">Loading profile...</p></div>
+      </section>
+
+      <section id="view-classes" class="hidden view">
+        <h1 class="page-title">
+          <i class="fas fa-chalkboard"></i> <span id="classesTitle">My Classes</span>
+          <button class="btn-inline hidden" id="newClassBtn" style="float:right;" onclick="openClassModal()"><i class="fas fa-plus"></i> New Class</button>
+        </h1>
+        <div id="classesGrid" class="course-grid"></div>
+        <div id="classDetail" class="hidden" style="margin-top:20px;">
+          <button class="btn-ghost" onclick="closeClassDetail()"><i class="fas fa-arrow-left"></i> Back to Classes</button>
+          <div id="classDetailContent" style="margin-top:12px;"></div>
+          <div id="classAnnouncementsWrap" class="card" style="margin-top:16px;">
+            <h3 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span><i class="fas fa-bullhorn" style="color:var(--primary);"></i> Announcements</span>
+              <button class="btn-inline hidden" id="newAnnBtn" style="margin-left:auto; padding:8px 14px; font-size:.82rem;" onclick="openAnnouncementModal()">
+                <i class="fas fa-plus"></i> New Announcement
+              </button>
+            </h3>
+            <div id="classAnnouncementsList" style="margin-top:12px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-admin" class="hidden view">
+        <h1 class="page-title"><i class="fas fa-shield-halved"></i> Admin Panel</h1>
+
+        <div class="card" style="background:linear-gradient(135deg, rgba(245,158,11,.10), rgba(239,68,68,.06)); border:2px dashed rgba(245,158,11,.45);">
+          <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+            <div style="font-size:2rem; color:var(--warn);"><i class="fas fa-tools"></i></div>
+            <div style="flex:1; min-width:220px;">
+              <h3 style="margin:0 0 6px 0;"><i class="fas fa-triangle-exclamation"></i> Maintenance Mode</h3>
+              <p class="muted" style="font-size:.88rem; line-height:1.5; margin:0 0 12px 0;">
+                When enabled, only admins can log in. Students and teachers will see the "We'll Be Right Back" screen.
+              </p>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <button id="maintenanceToggleBtn" class="btn-inline" onclick="toggleMaintenanceMode()">
+                  <i class="fas fa-power-off"></i> <span id="maintenanceToggleText">Enable Maintenance</span>
+                </button>
+                <span id="maintenanceStatusChip" class="chip">Checking…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>
+            <i class="fas fa-users"></i> Users
+            <button class="btn-inline" style="float:right; margin-left:6px;" onclick="openEnrollModal()"><i class="fas fa-user-plus"></i> Enroll Student</button>
+            <button class="btn-inline" style="float:right;" onclick="openUserModal()"><i class="fas fa-plus"></i> Add User</button>
+          </h3>
+          <div class="row">
+            <div class="field"><input id="adminUserSearch" class="input" placeholder="Search users..." oninput="loadAdminUsers()"></div>
+            <div class="field" style="max-width:180px;"><select id="adminRoleFilter" class="input" onchange="loadAdminUsers()">
+              <option value="">All roles</option><option value="student">Students</option><option value="teacher">Teachers</option><option value="admin">Admins</option>
+            </select></div>
+          </div>
+          <div id="adminUsersList" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-book"></i> All Projects</h3>
+          <div id="adminCoursesList" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-chalkboard"></i> Classes <button class="btn-inline" style="float:right;" onclick="openClassModal()"><i class="fas fa-plus"></i> Add Class</button></h3>
+          <div id="adminClassList" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-users"></i> Team Members <button class="btn-inline" style="float:right;" onclick="openTeamModal()"><i class="fas fa-plus"></i> Add Member</button></h3>
+          <div id="adminTeamList" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h3>
+            <i class="fas fa-robot"></i> Chatbot Answers
+            <button class="btn-inline" style="float:right;" onclick="openQAModal()"><i class="fas fa-plus"></i> Add Answer</button>
+          </h3>
+          <div class="row" style="margin-bottom:10px;">
+            <div class="field" style="margin-top:0;"><input id="qaSearch" class="input" placeholder="Search answers..." oninput="loadAdminQA()"></div>
+            <div class="field" style="margin-top:0; max-width:200px;">
+              <select id="qaCategoryFilter" class="input" onchange="loadAdminQA()">
+                <option value="">All categories</option>
+                <option>General</option><option>Auth</option><option>Projects</option>
+                <option>Chat</option><option>Friends</option><option>Profile</option>
+                <option>Classes</option><option>Admin</option><option>About</option>
+              </select>
+            </div>
+          </div>
+          <div id="adminQAList" style="margin-top:12px;"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</section>
+
+<div class="modal-backdrop" id="courseBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3 id="courseModalTitle">New Project</h3><button class="iconbtn" onclick="closeCourseModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="field"><div class="label">Title</div><input id="courseTitle" class="input" placeholder="Project title"></div>
+      <div class="field"><div class="label">Description</div><textarea id="courseDesc" class="input" rows="3"></textarea></div>
+      <div class="row">
+        <div class="field"><div class="label">Subject</div><select id="courseSubject" class="input"></select></div>
+        <div class="field"><div class="label">Deadline</div><input id="courseDeadline" type="date" class="input"></div>
+      </div>
+      <div class="field"><div class="label"><i class="fas fa-book-open"></i> Module Title (optional)</div><input id="courseModuleTitle" class="input" placeholder="e.g. Module 3: SQL Joins"></div>
+      <div class="field">
+        <div class="label"><i class="fas fa-image"></i> Module Picture (optional, max 3MB)</div>
+        <input type="file" id="courseModuleImage" class="input" accept="image/*" onchange="previewModuleImage(event)">
+        <img id="courseModuleImagePreview" class="hidden" style="max-width:100%; max-height:220px; border-radius:12px; margin-top:10px; object-fit:contain; border:1px solid var(--border);">
+      </div>
+      <div class="field" id="courseClassField">
+        <div class="label">Target Classes (auto-enroll students)</div>
+        <div id="courseClassCheckboxes" class="subject-checks"></div>
+      </div>
+      <div class="field"><label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="courseOpen" checked> Open for applications</label></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeCourseModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveCourse()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="applyBackdrop">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-head"><h3><i class="fas fa-paper-plane"></i> Apply to Join</h3><button class="iconbtn" onclick="closeApplyModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="muted" style="font-size:.88rem;">Send a short note to the teacher.</p>
+      <div class="field"><div class="label">Message (optional)</div><textarea id="applyMessage" class="input" rows="3"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeApplyModal()">Cancel</button>
+      <button class="btn-inline" onclick="submitApplication()"><i class="fas fa-paper-plane"></i> Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="inviteBackdrop">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-head"><h3><i class="fas fa-user-plus"></i> Invite a Student</h3><button class="iconbtn" onclick="closeInviteModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body"><div class="field"><div class="label">Student Email</div><input id="inviteEmail" class="input" placeholder="student@example.com"></div></div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeInviteModal()">Cancel</button>
+      <button class="btn-inline" onclick="sendInvite()"><i class="fas fa-paper-plane"></i> Send</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="userBackdrop">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head"><h3 id="userModalTitle">Add User</h3><button class="iconbtn" onclick="closeUserModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="field"><div class="label">Full Name</div><input id="uName" class="input"></div>
+      <div class="field"><div class="label">Email</div><input id="uEmail" type="email" class="input"></div>
+      <div class="field"><div class="label">Phone Number</div><input id="uPhone" type="tel" class="input" placeholder="+639171234567"></div>
+      <div class="field"><div class="label">Password <span class="muted" id="pwHint">(required for new user)</span></div>
+        <div class="pw-wrap">
+          <input id="uPass" type="password" class="input" placeholder="Leave blank to keep current">
+          <button type="button" class="pw-toggle" onclick="togglePassword('uPass', this)"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="field"><div class="label">Role</div>
+        <select id="uRole" class="input" onchange="onAdminRoleChange()"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select>
+      </div>
+      <div class="row" id="uStudentFields">
+        <div class="field"><div class="label">Course</div><input id="uCourse" class="input"></div>
+        <div class="field"><div class="label">Year Level</div><select id="uYear" class="input"><option value="">Select...</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select></div>
+      </div>
+      <div class="field hidden" id="uSubjectsField"><div class="label">Subjects Taught</div><div id="uSubjects" class="subject-checks"></div></div>
+      <div class="field"><div class="label">Bio</div><textarea id="uBio" class="input" rows="2"></textarea></div>
+      <div class="field"><label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="uActive" checked> Account Active</label></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeUserModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveUser()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="enrollBackdrop">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head"><h3><i class="fas fa-user-plus"></i> Enroll New Student</h3><button class="iconbtn" onclick="closeEnrollModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="muted" style="font-size:.85rem; margin-bottom:12px;">Create a pre-enrolled record. The student claims it by signing up with their Student ID + email.</p>
+      <div class="field"><div class="label">Full Name *</div><input id="enName" class="input"></div>
+      <div class="field"><div class="label">Email *</div><input id="enEmail" type="email" class="input"></div>
+      <div class="field"><div class="label">Student ID *</div><input id="enStudentId" class="input" placeholder="2024-00123"></div>
+      <div class="field"><div class="label">Enrolled Date</div><input id="enEnrolledAt" type="date" class="input"></div>
+      <div class="row">
+        <div class="field"><div class="label">Course</div><input id="enCourse" class="input" placeholder="BSIT"></div>
+        <div class="field"><div class="label">Year Level</div>
+          <select id="enYear" class="input"><option value="">Select...</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><div class="label">Section</div><input id="enSection" class="input"></div>
+        <div class="field"><div class="label">Assign to Class (optional)</div><select id="enClass" class="input"><option value="">— None —</option></select></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeEnrollModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveEnrollStudent()"><i class="fas fa-save"></i> Enroll</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="classBackdrop">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head"><h3 id="classModalTitle"><i class="fas fa-chalkboard"></i> New Class</h3><button class="iconbtn" onclick="closeClassModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="field"><div class="label">Class Name *</div><input id="classModalName" class="input" placeholder="BSIT-3A"></div>
+      <div class="row">
+        <div class="field"><div class="label">Course</div><input id="classModalCourse" class="input"></div>
+        <div class="field"><div class="label">Year Level</div>
+          <select id="classModalYear" class="input"><option value="">Select...</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select>
+        </div>
+      </div>
+      <div class="field"><div class="label">Section</div><input id="classModalSection" class="input" placeholder="A"></div>
+      <div class="field"><div class="label">Description (optional)</div><textarea id="classModalDesc" class="input" rows="2"></textarea></div>
+      <div class="field"><div class="label">Assign Teachers</div><div id="classModalTeacherList" class="subject-checks"></div></div>
+      <div class="field"><div class="label">Enroll Students</div><div id="classModalStudentList" class="subject-checks" style="max-height:200px; overflow-y:auto;"></div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeClassModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveClass()"><i class="fas fa-save"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="gradeSubmissionBackdrop">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head"><h3><i class="fas fa-star"></i> Grade Submission</h3><button class="iconbtn" onclick="closeGradeSubmissionModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="muted" style="margin-bottom:12px;">Student: <b id="gsStudentName"></b></p>
+      <p class="muted" style="margin-bottom:12px; font-size:.85rem;">File: <span id="gsFileName"></span></p>
+      <div class="field"><div class="label">Grade (0-100)</div><input id="gsGradeValue" type="number" min="0" max="100" class="input" placeholder="85"></div>
+      <div class="field"><div class="label">Feedback</div><textarea id="gsFeedback" class="input" rows="4"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeGradeSubmissionModal()">Cancel</button>
+      <button class="btn-inline" onclick="submitSubmissionGrade()"><i class="fas fa-check"></i> Submit Grade</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="mediaBackdrop">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h3><i class="fas fa-cloud-arrow-up"></i> Submit File</h3><button class="iconbtn" onclick="closeMediaModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="media-tabs">
+        <button class="media-tab active" data-kind="image" onclick="setMediaKind('image')"><i class="fas fa-image"></i> Photo</button>
+        <button class="media-tab" data-kind="video" onclick="setMediaKind('video')"><i class="fas fa-video"></i> Video</button>
+        <button class="media-tab" data-kind="file" onclick="setMediaKind('file')"><i class="fas fa-file"></i> File</button>
+      </div>
+      <div class="field"><div class="label">Choose <span id="mediaKindLabel">Photo</span></div><input type="file" id="mediaFileInput" class="input" onchange="handleMediaFile(event)"></div>
+      <div id="mediaPreview" style="margin-top:10px;"></div>
+      <div class="field"><div class="label">Note (optional)</div><textarea id="mediaNote" class="input" rows="2"></textarea></div>
+      <p class="muted" style="font-size:.78rem;">Max 15MB. Only you and the teacher can see this.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeMediaModal()">Cancel</button>
+      <button class="btn-inline" onclick="submitMedia()"><i class="fas fa-upload"></i> Upload</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="forgotBackdrop">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head"><h3><i class="fas fa-key"></i> Reset Password via Telegram</h3><button class="iconbtn" onclick="closeForgotPassword()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div id="forgotStep1">
+        <div class="field"><div class="label">Email Address</div><input id="forgotEmail" type="email" class="input"></div>
+        <div class="field"><div class="label">Phone Number</div><input id="forgotPhone" type="tel" class="input"></div>
+        <div class="button-row-center"><button class="btn-inline" onclick="requestTelegramReset()"><i class="fab fa-telegram"></i> Send Code</button></div>
+      </div>
+      <div id="forgotStep2" style="display:none;">
+        <div class="field"><div class="label">6-Digit Code</div><input id="forgotOtp" type="text" class="input otp-input" maxlength="6"></div>
+        <div class="field">
+          <div class="label">New Password</div>
+          <div class="pw-wrap">
+            <input id="forgotNewPass" type="password" class="input">
+            <button type="button" class="pw-toggle" onclick="togglePassword('forgotNewPass', this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="button-row-center">
+          <button class="btn-inline" onclick="submitTelegramReset()"><i class="fas fa-check"></i> Reset Password</button>
+          <button class="btn-ghost" onclick="showForgotStep1()">← Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="aboutBackdrop">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-head"><h3><i class="fas fa-circle-info"></i> About • Student Project Hub</h3><button class="iconbtn" onclick="closeAbout()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="card notice" style="background:var(--border); border:none; margin-top:0;">
+        <div style="font-weight:900; margin-bottom:6px; color:var(--primary);"><i class="fas fa-graduation-cap"></i> What is Student Project Hub?</div>
+        <div class="muted" style="line-height:1.6; font-size:.95rem;">A collaborative academic platform where teachers create projects, students enroll and submit work, and admins manage everything.</div>
+      </div>
+      <div class="card notice" style="background:var(--border); border:none;">
+        <h3 style="text-align:center; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:12px;">
+          <span><i class="fas fa-users" style="color:var(--primary);"></i> Meet the Team</span>
+          <button id="addTeamMemberBtn" class="btn-inline hidden" style="padding:6px 12px; font-size:.8rem;" onclick="openTeamModal()"><i class="fas fa-plus"></i> Add Member</button>
+        </h3>
+        <div class="team" id="teamList"></div>
+      </div>
+      <div class="card notice" style="background:var(--border); border:none;">
+        <h3 style="margin-bottom:10px;"><i class="fas fa-book" style="color:var(--primary);"></i> Supported Subjects</h3>
+        <div class="chips" id="aboutSubjects"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted" style="font-size:.78rem; margin-right:auto;">© <span id="aboutYear"></span> Student Project Hub</span>
+      <button class="btn-ghost" onclick="closeAbout()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="teamBackdrop">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h3 id="teamModalTitle"><i class="fas fa-user-plus"></i> Add Team Member</h3><button class="iconbtn" onclick="closeTeamModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="field" style="flex:1;"><div class="label">Full Name *</div><input id="tmName" class="input"></div>
+        <div class="field" style="flex:1;"><div class="label">Role *</div><input id="tmRole" class="input"></div>
+      </div>
+      <div class="row">
+        <div class="field"><div class="label">Badge</div><select id="tmBadge" class="input"><option value="">None</option><option value="developer">Developer</option><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
+        <div class="field"><div class="label">Order</div><input id="tmOrder" type="number" class="input" value="0"></div>
+      </div>
+      <div class="field"><div class="label">Short Description</div><textarea id="tmDesc" class="input" rows="2"></textarea></div>
+      <div class="field">
+        <div class="label">Photo (optional, max 1.5MB)</div>
+        <input type="file" id="tmPhotoInput" class="input" accept="image/*" onchange="handleTeamPhoto(event)">
+        <img id="tmPhotoPreview" class="hidden" style="max-width:100px; max-height:100px; border-radius:50%; margin-top:10px; object-fit:cover; border:3px solid var(--primary);">
+      </div>
+      <div class="row">
+        <div class="field"><div class="label">Facebook URL</div><input id="tmFacebook" class="input"></div>
+        <div class="field"><div class="label">GitHub URL</div><input id="tmGithub" class="input"></div>
+      </div>
+      <div class="field"><div class="label">Email</div><input id="tmEmail" type="email" class="input"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeTeamModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveTeamMember()"><i class="fas fa-save"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="qaBackdrop">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-head"><h3 id="qaModalTitle"><i class="fas fa-robot"></i> Add Chatbot Answer</h3><button class="iconbtn" onclick="closeQAModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="field"><div class="label">Keywords (comma separated) *</div><input id="qaKeywords" class="input" placeholder="forgot password, reset password"></div>
+      <div class="field"><div class="label">Answer *</div><textarea id="qaAnswer" class="input" rows="6"></textarea></div>
+      <div class="row">
+        <div class="field"><div class="label">Category</div>
+          <select id="qaCategory" class="input">
+            <option>General</option><option>Auth</option><option>Projects</option>
+            <option>Chat</option><option>Friends</option><option>Profile</option>
+            <option>Classes</option><option>Admin</option><option>About</option>
+          </select>
+        </div>
+        <div class="field"><div class="label">Order (lower = first)</div><input id="qaOrder" type="number" class="input" value="0"></div>
+      </div>
+      <div class="field"><label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="qaActive" checked> Active</label></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeQAModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveQA()"><i class="fas fa-save"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="annBackdrop">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h3 id="annModalTitle"><i class="fas fa-bullhorn"></i> New Announcement</h3><button class="iconbtn" onclick="closeAnnouncementModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="muted" id="annModalClass" style="font-size:.85rem; margin-bottom:10px;"></p>
+      <div class="field"><div class="label">Title *</div><input id="annTitle" class="input" maxlength="120" placeholder="e.g. Deadline moved to Friday"></div>
+      <div class="field"><div class="label">Message *</div><textarea id="annBody" class="input" rows="6" maxlength="2000" placeholder="Write your announcement..."></textarea></div>
+      <div class="field">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="annPinned"> <i class="fas fa-thumbtack" style="color:var(--primary);"></i> Pin to top
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeAnnouncementModal()">Cancel</button>
+      <button class="btn-inline" onclick="saveAnnouncement()"><i class="fas fa-paper-plane"></i> Post</button>
+    </div>
+  </div>
+</div>
+
+<div id="sphChatLauncher" class="sph-chat-launcher" onclick="toggleSphChat()" title="Help assistant">
+  <i class="fas fa-comment-dots"></i>
+  <span class="sph-chat-launcher-badge hidden" id="sphChatUnread">1</span>
+</div>
+
+<div id="sphChatWindow" class="sph-chat-window">
+  <div class="sph-chat-head">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="sph-chat-avatar"><i class="fas fa-robot"></i></div>
+      <div>
+        <div style="font-weight:800; font-size:.95rem;">SPH Assistant</div>
+        <div style="font-size:.72rem; opacity:.85;">Online · Answers instantly</div>
+      </div>
+    </div>
+    <button class="sph-chat-close" onclick="toggleSphChat()" title="Close"><i class="fas fa-xmark"></i></button>
+  </div>
+
+  <div id="sphChatMessages" class="sph-chat-messages">
+    <div class="sph-msg sph-msg-bot">
+      <div class="sph-msg-bubble">Hi! 👋 I'm SPH Assistant. Ask me anything about Student Project Hub.</div>
+    </div>
+    <div class="sph-chat-suggestions" id="sphChatSuggestions">
+      <div class="sph-chat-suggest-label">Quick questions:</div>
+      <button class="sph-suggestion" onclick="sphQuickAsk('How do I join a project?')">How do I join a project?</button>
+      <button class="sph-suggestion" onclick="sphQuickAsk('How do I reset my password?')">How do I reset my password?</button>
+      <button class="sph-suggestion" onclick="sphQuickAsk('How do I submit a file?')">How do I submit a file?</button>
+      <button class="sph-suggestion" onclick="sphQuickAsk('How do I create a project?')">How do I create a project?</button>
+      <button class="sph-suggestion" onclick="sphQuickAsk('Who has submitted the project?')">Who has submitted the project?</button>
+      <button class="sph-suggestion" onclick="sphQuickAsk('What is Student Project Hub?')">What is Student Project Hub?</button>
+    </div>
+  </div>
+
+  <div class="sph-chat-input-row">
+    <input id="sphChatInput" class="sph-chat-input" placeholder="Type your question..." onkeydown="if(event.key==='Enter')sphSendMessage()">
+    <button class="sph-chat-send" onclick="sphSendMessage()" title="Send"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>
