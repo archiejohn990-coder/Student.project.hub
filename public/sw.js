@@ -1,4 +1,4 @@
-const CACHE = "sph-v9";
+const CACHE = "sph-v10";
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -17,16 +17,13 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
 
-  // Only GET
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
 
-  // Never cache API calls, auth, or cross-origin requests
   if (url.pathname.startsWith("/api/")) return;
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML (so you always get the latest shell)
   const accept = req.headers.get("accept") || "";
   if (accept.includes("text/html")) {
     e.respondWith(
@@ -41,7 +38,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Cache-first for static assets (js, css, fonts, images)
   e.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
