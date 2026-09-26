@@ -12,7 +12,7 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const SYSTEM_VERSION = "8.3.0";
+const SYSTEM_VERSION = "8.3.1";
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",").map(s => s.trim()).filter(Boolean);
