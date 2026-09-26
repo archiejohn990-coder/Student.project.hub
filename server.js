@@ -12,6 +12,7 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const SYSTEM_VERSION = "8.3.0";
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",").map(s => s.trim()).filter(Boolean);
@@ -69,6 +70,7 @@ mongoose.connect(MONGO_URL)
     await seedAdmin();
     await seedChatbotQA();
     await backfillClassIds();
+    await logSystemBoot();
     startCleanupTimers();
   })
   .catch(err => { console.error("❌ Mongo error:", err.message); process.exit(1); });
@@ -235,6 +237,15 @@ const chatbotQASchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+const systemUpdateSchema = new mongoose.Schema({
+  version: { type: String, required: true },
+  title: { type: String, required: true },
+  body: { type: String, default: "" },
+  deployId: { type: String, default: "" },
+  deployedAt: { type: Date, default: Date.now },
+  readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+});
+
 const User = mongoose.model("User", userSchema);
 const Course = mongoose.model("Course", courseSchema);
 const Submission = mongoose.model("Submission", submissionSchema);
@@ -246,6 +257,7 @@ const Notification = mongoose.model("Notification", notificationSchema);
 const ClassModel = mongoose.model("Class", classSchema);
 const Announcement = mongoose.model("Announcement", announcementSchema);
 const ChatbotQA = mongoose.model("ChatbotQA", chatbotQASchema);
+const SystemUpdate = mongoose.model("SystemUpdate", systemUpdateSchema);
 
 const resetOtpStore = new Map();
 const resetRateLimit = new Map();
@@ -264,6 +276,22 @@ function isValidObjectId(id) {
 
 function safeStr(v, fallback = "") {
   return typeof v === "string" ? v : fallback;
+}
+
+async function logSystemBoot() {
+  try {
+    const last = await SystemUpdate.findOne().sort({ deployedAt: -1 });
+    if (last && last.version === SYSTEM_VERSION) return;
+    await SystemUpdate.create({
+      version: SYSTEM_VERSION,
+      title: `System updated to v${SYSTEM_VERSION}`,
+      body: "Student Project Hub was updated. Check the updates panel for details.",
+      deployId: process.env.RENDER_GIT_COMMIT || "",
+      deployedAt: new Date(),
+      readBy: []
+    });
+    console.log(`📢 Logged system update v${SYSTEM_VERSION}`);
+  } catch (e) { console.error("logSystemBoot error:", e.message); }
 }
 
 async function sendTelegram(chatId, text) {
@@ -355,8 +383,8 @@ async function seedChatbotQA() {
       { keywords: ["announcement", "announce", "notice", "class notice"], answer: "Teachers can post announcements to any class they teach. Go to Classes → click a class → New Announcement. Students in that class will get notified and see it on their dashboard.", category: "Classes", order: 17 },
       { keywords: ["grade", "graded", "grading", "score", "marks"], answer: "Teachers grade each submission individually (0-100) with written feedback. You'll only see YOUR grade — your classmates can't see it, and you can't see theirs.", category: "Projects", order: 18 },
       { keywords: ["who submitted", "submitted", "progress", "who done", "completed"], answer: "Teachers can see submission progress in the project's Members tab. Each student shows either 'Submitted' (with a count) or 'Not yet submitted', plus their latest grade and date.", category: "Projects", order: 19 },
-      { keywords: ["notification", "notifications", "bell"], answer: "You get notified about:\n• Project invites and acceptances\n• Submissions and grades\n• Friend requests\n• New messages\n• Class announcements\n\nClick the bell icon at the top-right to see them.", category: "General", order: 20 },
-      { keywords: ["admin", "admin panel", "manage users", "delete user", "add user"], answer: "Admins can:\n• Add / edit / delete users\n• Enroll students (with an editable enrolled date)\n• Create and manage classes\n• Monitor all projects (read-only)\n• Manage team members (About page)\n• Manage chatbot answers\n• Turn on 'Maintenance Mode' to lock out non-admins\n• Use 'View As' to preview the app as Teacher or Student", category: "Admin", order: 21 },
+      { keywords: ["notification", "notifications", "bell"], answer: "You get notified about:\n• Project invites and acceptances\n• Submissions and grades\n• Friend requests\n• New messages\n• Class announcements\n• System updates (admins)\n\nClick the bell icon at the top-right to see them.", category: "General", order: 20 },
+      { keywords: ["admin", "admin panel", "manage users", "delete user", "add user"], answer: "Admins can:\n• Add / edit / delete users\n• Enroll students (with an editable enrolled date)\n• Create and manage classes\n• Monitor all projects (read-only)\n• Manage team members (About page)\n• Manage chatbot answers\n• Turn on 'Maintenance Mode' to lock out non-admins\n• Use 'View As' to preview the app as Teacher or Student\n• See system updates in the Admin Panel", category: "Admin", order: 21 },
       { keywords: ["view as", "view as teacher", "view as student", "preview"], answer: "Admins can use the 'View As' dropdown in the topbar to preview the app as a Teacher or Student. This only changes the UI — you stay logged in as admin.", category: "Admin", order: 22 },
       { keywords: ["maintenance", "maintenance mode", "under maintenance"], answer: "Admins can enable Maintenance Mode from the Admin Panel. When ON, only admins can access the app — students and teachers see a 'We'll Be Right Back' screen. Turn it off to let everyone back in.", category: "Admin", order: 23 },
       { keywords: ["enroll", "enroll student", "enrolled", "enrollment"], answer: "Admins enroll students via Admin Panel → 'Enroll Student'. The admin enters the student's name, email, Student ID, and can set/edit the enrolled date. Students then sign up using that Student ID + email to claim the account.", category: "Admin", order: 24 },
@@ -366,7 +394,7 @@ async function seedChatbotQA() {
       { keywords: ["change password", "new password"], answer: "To change your password (while logged in):\n1. Go to Profile\n2. Scroll to 'Change Password'\n3. Enter current password + new password (6+ characters)\n4. Click Save", category: "Auth", order: 28 },
       { keywords: ["browse", "browse open", "open project"], answer: "'Browse Open' shows projects created by teachers that are accepting new members. Click a project to see details, then click 'Apply to Join'.", category: "Projects", order: 29 },
       { keywords: ["phone", "phone number", "mobile"], answer: "Your phone number is required for password reset via Telegram. It must match exactly what you enter in the reset form. Format: +639171234567\n\nAdd it in Profile → Phone Number → Save.", category: "Profile", order: 30 },
-      { keywords: ["help", "support", "contact", "cant find", "can't find"], answer: "I can help with most questions about Student Project Hub. Try asking about:\n• Signing up or logging in\n• Joining or creating projects\n• Submissions or grades\n• Chat, friends, or classes\n• Class announcements\n• Password reset via Telegram\n• Enrolling students (admins)\n\nIf I can't answer, contact your admin.", category: "General", order: 31 },
+      { keywords: ["help", "support", "contact", "cant find", "can't find"], answer: "I can help with most questions about Student Project Hub. Try asking about:\n• Signing up or logging in\n• Joining or creating projects\n• Submissions or grades\n• Chat, friends, or classes\n• Class announcements\n• System updates\n• Password reset via Telegram\n• Enrolling students (admins)\n\nIf I can't answer, contact your admin.", category: "General", order: 31 },
       { keywords: ["thank", "thanks", "ty", "salamat"], answer: "You're welcome! 😊 Ask me anything else about Student Project Hub.", category: "General", order: 32 },
       { keywords: ["hi", "hello", "hey", "kumusta", "kamusta"], answer: "Hi there! 👋 How can I help you with Student Project Hub today?", category: "General", order: 33 },
       { keywords: ["self enroll", "enroll myself", "sign up directly", "enroll on my own"], answer: "Students can now sign up directly without needing admin pre-enrollment. Just:\n1. Click 'Sign Up'\n2. Fill in your details\n3. Wait for admin approval\n\nYou'll get a notification once you're approved.", category: "Auth", order: 40 },
@@ -375,7 +403,8 @@ async function seedChatbotQA() {
       { keywords: ["warp", "isp blocked", "site won't load", "connection timed out", "err_connection"], answer: "If the site won't load on your Wi-Fi but works on mobile data, it's usually your ISP blocking Render's servers. The fix:\n1. Download Cloudflare WARP from https://1.1.1.1\n2. Install and click 'Connect'\n3. The site will now load on your Wi-Fi", category: "General", order: 43 },
       { keywords: ["switch account", "change account", "multiple accounts", "log in as someone else", "save account"], answer: "You can switch to a saved account without logging out first. Click your name at the top-right → 'Switch Account'. Saved accounts are remembered for next time. If you want to remove a saved account, click 'Don't save' when logging out.", category: "Auth", order: 44 },
       { keywords: ["teacher subjects", "change subjects", "add subject", "remove subject", "subjects i teach"], answer: "Teachers can manage their subjects from Profile → Subjects You Teach. Check or uncheck any subject and click 'Save Profile'. Your changes apply to new projects — existing projects keep their original subject.", category: "Profile", order: 45 },
-      { keywords: ["bulk class", "add multiple classes", "many classes", "add all at once"], answer: "Admins can add multiple classes in one go. Go to Admin Panel → Classes → 'Bulk Add'. Paste class names separated by commas or new lines, and the system will create them all at once.", category: "Admin", order: 46 }
+      { keywords: ["bulk class", "add multiple classes", "many classes", "add all at once"], answer: "Admins can add multiple classes in one go. Go to Admin Panel → Classes → 'Bulk Add'. Paste class names separated by commas or new lines, and the system will create them all at once.", category: "Admin", order: 46 },
+      { keywords: ["system update", "what's new", "new update", "changelog", "version"], answer: "Admins see system updates in the Admin Panel — a card called 'System Updates' lists recent deployments with version numbers and timestamps. Click 'Mark as read' to clear the notification badge.", category: "Admin", order: 47 }
     ];
     let added = 0;
     for (const d of defaults) {
@@ -627,7 +656,7 @@ app.delete("/api/me/telegram", auth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get("/api/config", (req, res) => res.json({ success: true, botUsername: process.env.TELEGRAM_BOT_USERNAME || "" }));
+app.get("/api/config", (req, res) => res.json({ success: true, botUsername: process.env.TELEGRAM_BOT_USERNAME || "", version: SYSTEM_VERSION }));
 
 app.post("/api/forgot/telegram/request", forgotLimiter, async (req, res) => {
   try {
@@ -690,6 +719,40 @@ app.post("/api/forgot/telegram/reset", async (req, res) => {
 });
 
 app.get("/api/subjects", (req, res) => res.json({ success: true, subjects: SUBJECTS }));
+
+app.get("/api/system-updates", auth, requireRole("admin"), async (req, res) => {
+  try {
+    const updates = await SystemUpdate.find().sort({ deployedAt: -1 }).limit(20);
+    const unread = updates.filter(u => !u.readBy.map(x => x.toString()).includes(req.userId));
+    res.json({
+      success: true,
+      updates: updates.map(u => ({
+        _id: u._id,
+        version: u.version,
+        title: u.title,
+        body: u.body,
+        deployId: u.deployId,
+        deployedAt: u.deployedAt,
+        read: u.readBy.map(x => x.toString()).includes(req.userId)
+      })),
+      unreadCount: unread.length
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/system-updates/:id/read", auth, requireRole("admin"), validId("id"), async (req, res) => {
+  try {
+    await SystemUpdate.findByIdAndUpdate(req.params.id, { $addToSet: { readBy: req.userId } });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/system-updates/read-all", auth, requireRole("admin"), async (req, res) => {
+  try {
+    await SystemUpdate.updateMany({}, { $addToSet: { readBy: req.userId } });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 app.get("/api/chatbot/qa", auth, async (req, res) => {
   try { res.json({ success: true, qa: await ChatbotQA.find({ isActive: true }).sort({ order: 1, createdAt: 1 }) }); }
@@ -1764,4 +1827,4 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || "Server error" });
 });
 
-app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Student Project Hub on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Student Project Hub on port ${PORT} (v${SYSTEM_VERSION})`));
