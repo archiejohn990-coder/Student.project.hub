@@ -1,4 +1,4 @@
-const CACHE = "sph-v10";
+const CACHE = "sph-v11";
 
 self.addEventListener("install", () => self.skipWaiting());
 
