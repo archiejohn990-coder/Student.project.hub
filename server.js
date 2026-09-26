@@ -368,7 +368,14 @@ async function seedChatbotQA() {
       { keywords: ["phone", "phone number", "mobile"], answer: "Your phone number is required for password reset via Telegram. It must match exactly what you enter in the reset form. Format: +639171234567\n\nAdd it in Profile → Phone Number → Save.", category: "Profile", order: 30 },
       { keywords: ["help", "support", "contact", "cant find", "can't find"], answer: "I can help with most questions about Student Project Hub. Try asking about:\n• Signing up or logging in\n• Joining or creating projects\n• Submissions or grades\n• Chat, friends, or classes\n• Class announcements\n• Password reset via Telegram\n• Enrolling students (admins)\n\nIf I can't answer, contact your admin.", category: "General", order: 31 },
       { keywords: ["thank", "thanks", "ty", "salamat"], answer: "You're welcome! 😊 Ask me anything else about Student Project Hub.", category: "General", order: 32 },
-      { keywords: ["hi", "hello", "hey", "kumusta", "kamusta"], answer: "Hi there! 👋 How can I help you with Student Project Hub today?", category: "General", order: 33 }
+      { keywords: ["hi", "hello", "hey", "kumusta", "kamusta"], answer: "Hi there! 👋 How can I help you with Student Project Hub today?", category: "General", order: 33 },
+      { keywords: ["self enroll", "enroll myself", "sign up directly", "enroll on my own"], answer: "Students can now sign up directly without needing admin pre-enrollment. Just:\n1. Click 'Sign Up'\n2. Fill in your details\n3. Wait for admin approval\n\nYou'll get a notification once you're approved.", category: "Auth", order: 40 },
+      { keywords: ["guest access", "guest project", "not my class", "different subject", "access other project"], answer: "If a project is outside your assigned class or subject, you can still access it if the teacher gives you 'guest' permission. Once granted, you can view the project, submit files, and participate like a regular member — but the teacher can remove you at any time.", category: "Projects", order: 41 },
+      { keywords: ["mobile", "phone view", "mobile looks bad", "not good on mobile", "landscape"], answer: "On mobile, the app is designed for portrait mode. If you're looking at wide tables (like the admin panel), rotate your phone to landscape for the best view. If something looks broken, try refreshing the page or clearing the browser cache.", category: "General", order: 42 },
+      { keywords: ["warp", "isp blocked", "site won't load", "connection timed out", "err_connection"], answer: "If the site won't load on your Wi-Fi but works on mobile data, it's usually your ISP blocking Render's servers. The fix:\n1. Download Cloudflare WARP from https://1.1.1.1\n2. Install and click 'Connect'\n3. The site will now load on your Wi-Fi", category: "General", order: 43 },
+      { keywords: ["switch account", "change account", "multiple accounts", "log in as someone else", "save account"], answer: "You can switch to a saved account without logging out first. Click your name at the top-right → 'Switch Account'. Saved accounts are remembered for next time. If you want to remove a saved account, click 'Don't save' when logging out.", category: "Auth", order: 44 },
+      { keywords: ["teacher subjects", "change subjects", "add subject", "remove subject", "subjects i teach"], answer: "Teachers can manage their subjects from Profile → Subjects You Teach. Check or uncheck any subject and click 'Save Profile'. Your changes apply to new projects — existing projects keep their original subject.", category: "Profile", order: 45 },
+      { keywords: ["bulk class", "add multiple classes", "many classes", "add all at once"], answer: "Admins can add multiple classes in one go. Go to Admin Panel → Classes → 'Bulk Add'. Paste class names separated by commas or new lines, and the system will create them all at once.", category: "Admin", order: 46 }
     ];
     let added = 0;
     for (const d of defaults) {
@@ -1424,7 +1431,6 @@ app.delete("/api/classes/:id", auth, requireRole("admin"), validId("id"), async 
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ===================== ANNOUNCEMENTS =====================
 app.get("/api/classes/:id/announcements", auth, validId("id"), async (req, res) => {
   try {
     const cls = await ClassModel.findById(req.params.id);
