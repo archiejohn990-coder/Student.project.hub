@@ -282,7 +282,7 @@
         <a onclick="showView('people')" id="nav-people"><i class="fas fa-users"></i> <span>People</span></a>
         <a onclick="showView('profile')" id="nav-profile"><i class="fas fa-user"></i> <span>Profile</span></a>
         <a onclick="showView('classes')" id="nav-classes"><i class="fas fa-chalkboard"></i> <span>Classes</span></a>
-        <a onclick="showView('admin')" id="nav-admin" class="hidden"><i class="fas fa-shield-halved"></i> <span>Admin Panel</span></a>
+        <a onclick="showView('admin')" id="nav-admin" class="hidden"><i class="fas fa-shield-halved"></i> <span>Admin Panel</span><span id="adminUpdateBadge" class="nav-badge hidden">0</span></a>
       </div>
       <div class="spacer"></div>
       <a class="nav logout" onclick="logout()"><i class="fas fa-power-off"></i> <span>Logout</span></a>
@@ -609,6 +609,18 @@
 
       <section id="view-admin" class="hidden view">
         <h1 class="page-title"><i class="fas fa-shield-halved"></i> Admin Panel</h1>
+
+        <div class="card" id="systemUpdatesCard" style="background:linear-gradient(135deg, rgba(34,197,94,.08), rgba(22,163,74,.04)); border:2px solid rgba(22,163,74,.25);">
+          <h3 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span><i class="fas fa-bell" style="color:var(--primary);"></i> System Updates</span>
+            <span id="systemUpdatesBadge" class="nav-badge hidden" style="position:static; margin-left:0;">0</span>
+            <button class="btn-ghost" style="margin-left:auto; padding:6px 12px; font-size:.78rem;" onclick="markAllSystemUpdatesRead()">
+              <i class="fas fa-check-double"></i> Mark all read
+            </button>
+          </h3>
+          <p class="muted" style="font-size:.85rem; margin:6px 0 10px 0;">You'll see a notification here every time the system is updated (new deploy).</p>
+          <div id="systemUpdatesList"></div>
+        </div>
 
         <div class="card" style="background:linear-gradient(135deg, rgba(245,158,11,.10), rgba(239,68,68,.06)); border:2px dashed rgba(245,158,11,.45);">
           <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
