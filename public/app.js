@@ -32,6 +32,7 @@ let eligibleTeachers = [];
 let eligibleStudents = [];
 
 let BOT_USERNAME = "";
+let SYSTEM_VERSION = "";
 
 let viewedUserId = null;
 let viewedUserData = null;
@@ -64,7 +65,6 @@ const sameId = (a, b) => {
   return sa === sb;
 };
 const idOf = (x) => (x && typeof x === "object" && x._id) ? String(x._id) : String(x ?? "");
-
 const jsId = (v) => String(v ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
 
 function toast(type, title, msg) {
@@ -496,6 +496,12 @@ async function initApp() {
     try { const c = await api("/api/classes"); ALL_CLASSES = c.classes || []; } catch {}
   } catch {}
 
+  try {
+    const cfg = await api("/api/config");
+    BOT_USERNAME = cfg.botUsername || "";
+    SYSTEM_VERSION = cfg.version || "";
+  } catch {}
+
   await loadMaintenanceStatus();
 
   hydrateTopBar();
@@ -637,12 +643,59 @@ function showView(v) {
   if (v === "friends") { loadFriendRequests(); loadFriends(); }
   if (v === "chat") loadContacts();
   if (v === "classes") loadClasses();
-  if (v === "admin") { loadAdminUsers(); loadAdminCourses(); loadAdminClasses(); loadAdminTeam(); loadAdminQA(); updateMaintenanceUI(); }
+  if (v === "admin") { loadAdminUsers(); loadAdminCourses(); loadAdminClasses(); loadAdminTeam(); loadAdminQA(); updateMaintenanceUI(); loadSystemUpdates(); }
   if (v === "teacher-courses") loadTeacherCourses();
 }
 function toggleDrawer() { $("sidebar").classList.toggle("open"); $("drawerBackdrop").classList.toggle("show"); }
 function closeDrawer() { $("sidebar").classList.remove("open"); $("drawerBackdrop").classList.remove("show"); }
 function backFromCourse() { showView(lastCourseView || "courses"); }
+
+async function loadSystemUpdates() {
+  const card = $("systemUpdatesCard");
+  const list = $("systemUpdatesList");
+  const badge = $("systemUpdatesBadge");
+  if (!card || !list) return;
+  try {
+    const data = await api("/api/system-updates");
+    const updates = data.updates || [];
+    if (badge) {
+      if (data.unreadCount > 0) { badge.classList.remove("hidden"); badge.innerText = data.unreadCount > 9 ? "9+" : data.unreadCount; }
+      else badge.classList.add("hidden");
+    }
+    if (!updates.length) {
+      list.innerHTML = `<p class="muted" style="font-size:.88rem;">No updates yet.</p>`;
+      return;
+    }
+    list.innerHTML = updates.map(u => `
+      <div style="padding:12px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; ${u.read ? '' : 'background:rgba(22,163,74,.06); border-color:var(--primary);'}">
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
+          <div style="font-weight:800;">${esc(u.title)} ${u.read ? '' : '<span class="chip green" style="margin-left:6px; font-size:.65rem;">NEW</span>'}</div>
+          <span class="chip" style="font-size:.7rem;">v${esc(u.version)}</span>
+        </div>
+        <div class="muted" style="font-size:.75rem; margin-top:4px;">${new Date(u.deployedAt).toLocaleString()}</div>
+        ${u.body ? `<div style="margin-top:8px; font-size:.88rem; line-height:1.5;">${esc(u.body)}</div>` : ""}
+        ${!u.read ? `<button class="btn-ghost" style="margin-top:8px; padding:4px 10px; font-size:.75rem;" onclick="markSystemUpdateRead('${jsId(u._id)}')"><i class="fas fa-check"></i> Mark as read</button>` : ""}
+      </div>
+    `).join("");
+  } catch (e) {
+    list.innerHTML = `<p class="muted" style="font-size:.88rem;">Failed to load updates.</p>`;
+  }
+}
+
+async function markSystemUpdateRead(id) {
+  try {
+    await api(`/api/system-updates/${id}/read`, { method: "POST" });
+    loadSystemUpdates();
+  } catch (e) { toast("danger", "Error", e.message); }
+}
+
+async function markAllSystemUpdatesRead() {
+  try {
+    await api("/api/system-updates/read-all", { method: "POST" });
+    loadSystemUpdates();
+    toast("success", "Marked all read", "");
+  } catch (e) { toast("danger", "Error", e.message); }
+}
 
 async function loadTeacherCourses() {
   try {
@@ -764,8 +817,6 @@ async function unfriendViewedUser() {
   catch (e) { toast("danger", "Error", e.message); }
 }
 
-async function loadBotConfig() { try { const r = await fetch("/api/config"); BOT_USERNAME = (await r.json()).botUsername || ""; } catch {} }
-
 function updateTelegramStatusBox() {
   const box = $("tgStatusBox"); const hint = $("tgHint"); const unlinkBtn = $("unlinkTgBtn");
   if (!box) return;
@@ -778,7 +829,6 @@ function updateTelegramStatusBox() {
     if (hint) { hint.style.display = "block"; hint.innerHTML = `<b>Quick setup:</b><br>1. In Telegram, message <b>@userinfobot</b> to get your Chat ID<br>2. Search <b>@${BOT_USERNAME || "StudentProjectHubBot"}</b> and press START<br>3. Paste your Chat ID below → Save`; }
     if (unlinkBtn) unlinkBtn.style.display = "none";
   }
-  (async () => { if (!BOT_USERNAME) await loadBotConfig(); })();
 }
 async function testTelegramLink() {
   const chatId = ($("profTelegram")?.value || user?.telegramChatId || "").trim();
@@ -1711,7 +1761,6 @@ async function deleteClass(id, name) {
   catch (e) { toast("danger", "Error", e.message); }
 }
 
-// ===================== ANNOUNCEMENTS =====================
 let annCurrentClassId = null;
 let annCurrentClassName = "";
 
@@ -2129,7 +2178,7 @@ function sphSendMessage() {
   setTimeout(() => {
     sphHideTyping();
     const answer = sphMatch(text);
-    sphAppendMessage(answer || "Sorry, I don't have an answer for that yet. 😅\n\nTry asking about:\n• Signing up or logging in\n• Joining or creating projects\n• Submissions or grades\n• Chat, friends, or classes\n• Class announcements\n• Password reset via Telegram", "bot");
+    sphAppendMessage(answer || "Sorry, I don't have an answer for that yet. 😅\n\nTry asking about:\n• Signing up or logging in\n• Joining or creating projects\n• Submissions or grades\n• Chat, friends, or classes\n• Class announcements\n• System updates\n• Password reset via Telegram", "bot");
   }, 500);
 }
 function sphQuickAsk(question) {
